@@ -13,7 +13,7 @@ const { Pool } = require('pg'); // Importamos el Pool de pg para conectarnos a P
 // Conexión a la base de datos sessions_db (sesiones de usuario)
 const pool = new Pool({
     user: 'postgres',
-    host: 'localhost',  // o tu host de PostgreSQL
+    host: 'localhost',  // o tu host de PostgreSQL.
     database: 'sessions_db',  // Base de datos para sesiones
     password: '132187ok',
     port: 5432,
