@@ -1,4 +1,4 @@
-console.log("Iniciando el servidor...");  // Esto debería aparecer en la consola al ejecutar el archivo
+console.log("Iniciando el servidor...");  // Mensaje para verificar que el servidor inicia
 
 const express = require('express');
 const http = require('http');
@@ -13,7 +13,7 @@ const { Pool } = require('pg'); // Importamos el Pool de pg para conectarnos a P
 // Conexión a la base de datos sessions_db (sesiones de usuario)
 const pool = new Pool({
     user: 'postgres',
-    host: 'localhost',  // o tu host de PostgreSQL.
+    host: 'localhost',  // o el host de PostgreSQL
     database: 'sessions_db',  // Base de datos para sesiones
     password: '132187ok',
     port: 5432,
@@ -23,14 +23,23 @@ const pool = new Pool({
 const app = express();
 app.use(express.json());
 
-// Configuración de CORS
+// 🚀 **Configuración de CORS corregida**
+const allowedOrigins = [
+    "http://127.0.0.1:5500", 
+    "http://127.0.0.1:5501", 
+    "http://localhost:5500", 
+    "http://localhost:5501", 
+    "https://skytrend.icu"
+];
+
 app.use(cors({
-    origin: '*', // Permitir solicitudes desde cualquier origen
-    methods: ['GET', 'POST'],
-    credentials: true,
+    origin: allowedOrigins, // ✅ Solo permite estos orígenes
+    methods: ["GET", "POST"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+    credentials: true
 }));
 
-// Ruta para generar un token JWT
+// ✅ **Ruta para generar un token JWT**
 app.post('/generate-token', async (req, res) => {
     const { username, device_id, expiration } = req.body;
 
@@ -57,7 +66,6 @@ app.post('/generate-token', async (req, res) => {
         const result = await pool.query('SELECT * FROM sessions WHERE token = $1', [token]);
 
         if (result.rows.length > 0) {
-            // Si ya hay una sesión activa, verificamos si el dispositivo es diferente
             const activeSession = result.rows[0];
             if (activeSession.device_id !== device_id) {
                 // El token está en uso en otro dispositivo, cerramos la sesión anterior
@@ -81,7 +89,6 @@ app.post('/generate-token', async (req, res) => {
                 const insertUserResult = await pool.query('INSERT INTO users (username) VALUES ($1) RETURNING id', [username]);
                 userId = insertUserResult.rows[0].id;
             } else {
-                // Si el usuario ya existe, usamos su id
                 userId = userResult.rows[0].id;
             }
 
@@ -100,10 +107,10 @@ app.post('/generate-token', async (req, res) => {
     }
 });
 
-
-// Ruta para verificar si el token es válido y si está en el dispositivo correcto
+// ✅ **Ruta para verificar si el token es válido**
 app.post('/verify-token', async (req, res) => {
     const token = req.headers['authorization']?.split(' ')[1]; // Obtener el token del header
+
     if (!token) {
         return res.status(400).json({ error: 'Token no proporcionado' });
     }
@@ -129,7 +136,6 @@ app.post('/verify-token', async (req, res) => {
         }
 
         if (activeSession.device_id !== deviceId) {
-            // Si el token está en un dispositivo diferente, cerramos la sesión en el anterior dispositivo
             await pool.query('UPDATE sessions SET valid = false WHERE token = $1', [token]);
 
             // Actualizamos la sesión en el dispositivo actual
@@ -149,29 +155,58 @@ app.post('/verify-token', async (req, res) => {
     }
 });
 
-// Crear el servidor HTTP
+
+// ✅ **Ruta para eliminar un token específico**
+app.post('/delete-token', async (req, res) => {
+    const { tokenToDelete } = req.body; // Token a eliminar desde el request
+
+    if (!tokenToDelete) {
+        return res.status(400).json({ error: 'Token a eliminar no proporcionado' });
+    }
+
+    try {
+        // Verificar si el token existe en la base de datos
+        const result = await pool.query('SELECT * FROM sessions WHERE token = $1', [tokenToDelete]);
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Token no encontrado en la base de datos' });
+        }
+
+        // Eliminar el token de la base de datos
+        await pool.query('DELETE FROM sessions WHERE token = $1', [tokenToDelete]);
+
+        res.json({ message: `El token ha sido eliminado correctamente.` });
+
+    } catch (err) {
+        console.error('Error al eliminar el token:', err);
+        res.status(500).json({ error: 'Error al eliminar el token' });
+    }
+});
+
+
+
+
+// ✅ **Crear el servidor HTTP o HTTPS**
 let server;
 if (process.env.NODE_ENV === 'production') {
-    // Si estamos en producción, usamos HTTPS
     const sslOptions = {
-        key: fs.readFileSync('/ruta/a/tu/clave-privada.key'),   // Clave privada del certificado SSL
-        cert: fs.readFileSync('/ruta/a/tu/certificado.crt'),  // Certificado SSL
-        ca: fs.readFileSync('/ruta/a/tu/cadena-de-certificados.pem'), // Cadena de certificados (si es necesario)
+        key: fs.readFileSync('/ruta/a/tu/clave-privada.key'),
+        cert: fs.readFileSync('/ruta/a/tu/certificado.crt'),
+        ca: fs.readFileSync('/ruta/a/tu/cadena-de-certificados.pem'),
     };
 
-    server = https.createServer(sslOptions, app); // Crear el servidor HTTPS
+    server = https.createServer(sslOptions, app);
 } else {
-    // En desarrollo, usamos HTTP
-    server = http.createServer(app); // Crear el servidor HTTP
+    server = http.createServer(app);
 }
 
-// Función para iniciar el servidor
+// ✅ **Iniciar el servidor**
 const start = () => {
-    const PORT = process.env.PORT || 4000;  // Puerto 4000 para desarrollo y producción
+    const PORT = process.env.PORT || 4000;
     console.log(`Intentando iniciar servidor en el puerto ${PORT}...`);
     server.listen(PORT, () => {
         console.log(`Servidor corriendo en ${process.env.NODE_ENV === 'production' ? 'https' : 'http'}://localhost:${PORT}`);
     });
 };
 
-start(); // Llamada a la función start para iniciar el servidor
+start(); // Iniciar el servidor
