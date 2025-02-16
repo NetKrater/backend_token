@@ -30,7 +30,6 @@ const allowedOrigins = [
     "http://127.0.0.1:5501", 
     "http://localhost:5500", 
     "http://localhost:5501",
-    
 ];
 
 // Configurar CORS para aceptar solicitudes desde los orígenes permitidos
@@ -101,7 +100,6 @@ app.post('/generate-token', async (req, res) => {
     }
 });
 
-
 // ✅ **Ruta para verificar si el token es válido**
 app.post('/verify-token', async (req, res) => {
     const token = req.headers['authorization']?.split(' ')[1]; // Obtener el token del header
@@ -150,7 +148,6 @@ app.post('/verify-token', async (req, res) => {
     }
 });
 
-
 // ✅ **Ruta para eliminar un token específico**
 app.post('/delete-token', async (req, res) => {
     const { tokenToDelete } = req.body; // Token a eliminar desde el request
@@ -178,9 +175,6 @@ app.post('/delete-token', async (req, res) => {
     }
 });
 
-
-
-
 // ✅ **Crear el servidor HTTP o HTTPS**
 let server;
 if (process.env.NODE_ENV === 'production') {
@@ -199,7 +193,7 @@ if (process.env.NODE_ENV === 'production') {
 const start = () => {
     const PORT = process.env.PORT || 4000;
     console.log(`Intentando iniciar servidor en el puerto ${PORT}...`);
-    server.listen(PORT, () => {
+    server.listen(PORT, '0.0.0.0', () => {  // Escuchar en todas las interfaces de red
         console.log(`Servidor corriendo en ${process.env.NODE_ENV === 'production' ? 'https' : 'http'}://localhost:${PORT}`);
     });
 };
