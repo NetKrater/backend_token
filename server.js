@@ -25,11 +25,13 @@ app.use(express.json());
 
 // CORS configurado para aceptar solicitudes desde tu frontend en Vercel
 const allowedOrigins = [
-    'https://generador-toke-git-master-oswaldo-cuestas-projects.vercel.app',  //Dominio de tu frontend
+    'https://generador-toke-git-master-oswaldo-cuestas-projects.vercel.app',  // Dominio de tu frontend
+    'https://cliente-html-git-master-oswaldo-cuestas-projects.vercel.app',
     'http://localhost:5500',  // Para desarrollo local
     'http://127.0.0.1:5500',  // Para desarrollo local
 ];
 
+// Habilitar CORS para estos orígenes
 app.use(cors({
     origin: allowedOrigins,  // Permitir estos orígenes
     methods: ['GET', 'POST'],
@@ -153,7 +155,6 @@ app.post('/verify-token', async (req, res) => {
     }
 });
 
-
 // ✅ **Ruta para eliminar un token específico**
 app.post('/delete-token', async (req, res) => {
     const { tokenToDelete } = req.body; // Token a eliminar desde el request
@@ -180,9 +181,6 @@ app.post('/delete-token', async (req, res) => {
         res.status(500).json({ error: 'Error al eliminar el token' });
     }
 });
-
-
-
 
 // Crear el servidor
 const server = app.listen(process.env.PORT || 4000, () => {
