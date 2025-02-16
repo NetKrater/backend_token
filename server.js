@@ -44,6 +44,7 @@ app.use(cors({
 app.options('*', cors());
 
 // ✅ **Ruta para generar un token JWT**
+// Ruta para generar un token JWT
 app.post('/generate-token', async (req, res) => {
     const { username, device_id, expiration } = req.body;
 
@@ -99,6 +100,7 @@ app.post('/generate-token', async (req, res) => {
         res.status(500).json({ error: 'Error al generar el token' });
     }
 });
+
 
 // ✅ **Ruta para verificar si el token es válido**
 app.post('/verify-token', async (req, res) => {
@@ -191,7 +193,7 @@ if (process.env.NODE_ENV === 'production') {
 
 // ✅ **Iniciar el servidor**
 const start = () => {
-    const PORT = process.env.PORT || 4000;
+    const PORT = process.env.PORT || 3000;
     console.log(`Intentando iniciar servidor en el puerto ${PORT}...`);
     server.listen(PORT, '0.0.0.0', () => {  // Escuchar en todas las interfaces de red
         console.log(`Servidor corriendo en ${process.env.NODE_ENV === 'production' ? 'https' : 'http'}://localhost:${PORT}`);
