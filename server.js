@@ -25,20 +25,25 @@ app.use(express.json());
 
 // 🚀 **Configuración de CORS corregida**
 const allowedOrigins = [
+    "https://cliente-html-git-master-oswaldo-cuestas-projects.vercel.app", 
+    "https://generador-toke-git-master-oswaldo-cuestas-projects.vercel.app/",
     "http://127.0.0.1:5500", 
     "http://127.0.0.1:5501", 
     "http://localhost:5500", 
     "http://localhost:5501",
-    'https://cliente-html-git-master-oswaldo-cuestas-projects.vercel.app', 
-    "https://generador-toke-git-master-oswaldo-cuestas-projects.vercel.app/"
+    
 ];
 
+// Configurar CORS para aceptar solicitudes desde los orígenes permitidos
 app.use(cors({
-    origin: allowedOrigins, // ✅ Solo permite estos orígenes
-    methods: ["GET", "POST"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-    credentials: true
+    origin: allowedOrigins,  // Permitir estos orígenes
+    methods: ['GET', 'POST', 'OPTIONS'],  // Aseguramos que OPTIONS esté permitido
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true,  // Si necesitas compartir cookies
 }));
+
+// Permitir todas las solicitudes OPTIONS (preflight)
+app.options('*', cors());
 
 // ✅ **Ruta para generar un token JWT**
 app.post('/generate-token', async (req, res) => {
