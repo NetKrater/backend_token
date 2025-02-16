@@ -23,20 +23,21 @@ const pool = new Pool({
 const app = express();
 app.use(express.json());
 
-// CORS configurado para aceptar solicitudes desde tu frontend en Vercel
+// 🚀 **Configuración de CORS corregida**
 const allowedOrigins = [
-    'https://generador-toke-git-master-oswaldo-cuestas-projects.vercel.app',  // Dominio de tu frontend
-    'https://cliente-html-git-master-oswaldo-cuestas-projects.vercel.app',
-    'http://localhost:5500',  // Para desarrollo local
-    'http://127.0.0.1:5500',  // Para desarrollo local
+    "http://127.0.0.1:5500", 
+    "http://127.0.0.1:5501", 
+    "http://localhost:5500", 
+    "http://localhost:5501",
+    'https://cliente-html-git-master-oswaldo-cuestas-projects.vercel.app', 
+    "https://generador-toke-git-master-oswaldo-cuestas-projects.vercel.app/"
 ];
 
-// Habilitar CORS para estos orígenes
 app.use(cors({
-    origin: allowedOrigins,  // Permitir estos orígenes
-    methods: ['GET', 'POST'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
-    credentials: true, // Para permitir cookies si es necesario
+    origin: allowedOrigins, // ✅ Solo permite estos orígenes
+    methods: ["GET", "POST"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+    credentials: true
 }));
 
 // ✅ **Ruta para generar un token JWT**
@@ -155,6 +156,7 @@ app.post('/verify-token', async (req, res) => {
     }
 });
 
+
 // ✅ **Ruta para eliminar un token específico**
 app.post('/delete-token', async (req, res) => {
     const { tokenToDelete } = req.body; // Token a eliminar desde el request
@@ -182,7 +184,30 @@ app.post('/delete-token', async (req, res) => {
     }
 });
 
-// Crear el servidor
-const server = app.listen(process.env.PORT || 4000, () => {
-    console.log(`Servidor corriendo en ${process.env.PORT || 4000}`);
-});
+
+
+
+// ✅ **Crear el servidor HTTP o HTTPS**
+let server;
+if (process.env.NODE_ENV === 'production') {
+    const sslOptions = {
+        key: fs.readFileSync('/ruta/a/tu/clave-privada.key'),
+        cert: fs.readFileSync('/ruta/a/tu/certificado.crt'),
+        ca: fs.readFileSync('/ruta/a/tu/cadena-de-certificados.pem'),
+    };
+
+    server = https.createServer(sslOptions, app);
+} else {
+    server = http.createServer(app);
+}
+
+// ✅ **Iniciar el servidor**
+const start = () => {
+    const PORT = process.env.PORT || 4000;
+    console.log(`Intentando iniciar servidor en el puerto ${PORT}...`);
+    server.listen(PORT, () => {
+        console.log(`Servidor corriendo en ${process.env.NODE_ENV === 'production' ? 'https' : 'http'}://localhost:${PORT}`);
+    });
+};
+
+start(); // Iniciar el servidor
