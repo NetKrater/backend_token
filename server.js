@@ -48,6 +48,7 @@ app.options('*', cors());
 app.post('/generate-token', async (req, res) => {
     const { username, device_id, expiration } = req.body;
 
+    // Validación de parámetros
     if (!username || !device_id || !expiration) {
         return res.status(400).json({ message: 'Faltan parámetros' });
     }
@@ -63,45 +64,33 @@ app.post('/generate-token', async (req, res) => {
         exp: Math.floor(expirationDate.getTime() / 1000), // Expiración en segundos
     };
 
-    // Generar el token JWT
     const token = jwt.sign(payload, process.env.JWT_SECRET_KEY || 'mi_clave_secreta');
 
     try {
-        // Verificar si ya hay una sesión activa con este token
+        // Verificar si el token ya existe en la base de datos
         const result = await pool.query('SELECT * FROM sessions WHERE token = $1', [token]);
 
         if (result.rows.length > 0) {
             const activeSession = result.rows[0];
             if (activeSession.device_id !== device_id) {
-                // El token está en uso en otro dispositivo, cerramos la sesión anterior
                 await pool.query('UPDATE sessions SET valid = false WHERE token = $1', [token]);
-
-                // Insertar la nueva sesión en el dispositivo actual
                 await pool.query(
                     'UPDATE sessions SET device_id = $1, expiration_time = $2 WHERE token = $3',
                     [device_id, expirationDate, token]
                 );
-
-                return res.json({ token, message: 'Token trasladado a otro dispositivo y sesión cerrada en el anterior dispositivo' });
+                return res.json({ token, message: 'Token trasladado a otro dispositivo' });
             }
         } else {
-            // Si no hay sesión activa, creamos una nueva sesión en la base de datos
             const userResult = await pool.query('SELECT id FROM users WHERE username = $1', [username]);
-
             let userId;
             if (userResult.rows.length === 0) {
-                // Si el usuario no existe, creamos uno nuevo
                 const insertUserResult = await pool.query('INSERT INTO users (username) VALUES ($1) RETURNING id', [username]);
                 userId = insertUserResult.rows[0].id;
             } else {
                 userId = userResult.rows[0].id;
             }
 
-            // Insertar la nueva sesión
-            await pool.query(
-                'INSERT INTO sessions(token, device_id, username, expiration_time, user_id) VALUES($1, $2, $3, $4, $5)',
-                [token, device_id, username, expirationDate, userId]
-            );
+            await pool.query('INSERT INTO sessions(token, device_id, username, expiration_time, user_id) VALUES($1, $2, $3, $4, $5)', [token, device_id, username, expirationDate, userId]);
         }
 
         res.json({ token });
@@ -111,6 +100,7 @@ app.post('/generate-token', async (req, res) => {
         res.status(500).json({ error: 'Error al generar el token' });
     }
 });
+
 
 // ✅ **Ruta para verificar si el token es válido**
 app.post('/verify-token', async (req, res) => {
