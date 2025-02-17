@@ -25,7 +25,7 @@ app.use(express.json());
 
 // 🚀 **Configuración de CORS corregida**
 const allowedOrigins = [
-    'https://cliente-html-git-master-oswaldo-cuestas-projects.vercel.app', // Producción
+    "https://generador-toke-git-master-oswaldo-cuestas-projects.vercel.app/", //Producción
     "http://127.0.0.1:5500", 
     "http://127.0.0.1:5501", 
     "http://localhost:5500", 
