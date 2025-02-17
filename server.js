@@ -204,8 +204,8 @@ if (process.env.NODE_ENV === 'production') {
 const start = () => {
     const PORT = process.env.PORT || 4000;
     console.log(`Intentando iniciar servidor en el puerto ${PORT}...`);
-    server.listen(PORT, '0.0.0.0', () => {  // Escuchar en todas las interfaces de red
-        console.log(`Servidor corriendo en ${process.env.NODE_ENV === 'production' ? 'https' : 'http'}://localhost:${PORT}`);
+    server.listen(PORT, '0.0.0.0', () => {
+        console.log(`Servidor escuchando en http://0.0.0.0:${PORT}`);
     });
 };
 
