@@ -23,23 +23,29 @@ const pool = new Pool({
 const app = express();
 app.use(express.json());
 
-// Configurar CORS para aceptar solicitudes desde los orígenes permitidos
+// Configuración de CORS
 const allowedOrigins = [
-    "https://cliente-html-git-master-oswaldo-cuestas-projects.vercel.app",  
     "https://generador-toke-git-master-oswaldo-cuestas-projects.vercel.app", 
-    "http://127.0.0.1:5500", 
-    "http://127.0.0.1:5501", 
-    "http://localhost:5500", 
-    "http://localhost:5501",
+    "http://localhost:3000",  // Si usas localhost en desarrollo
+    "https://cliente-html-git-master-oswaldo-cuestas-projects.vercel.app"
 ];
 
-// Coloca cors antes de las rutas
+// Configurar CORS para aceptar solicitudes desde los orígenes permitidos
 app.use(cors({
     origin: allowedOrigins,  // Permitir estos orígenes
-    methods: ['GET', 'POST', 'OPTIONS'],  // Aseguramos que OPTIONS esté permitido
-    allowedHeaders: ['Content-Type', 'Authorization'],
-    credentials: true,  // Si necesitas compartir cookies
+    methods: ['GET', 'POST', 'OPTIONS'],  // Métodos permitidos
+    allowedHeaders: ['Content-Type', 'Authorization'],  // Encabezados permitidos
+    credentials: true,  // Si necesitas compartir cookies o sesiones
 }));
+
+// Asegurarse de que las solicitudes OPTIONS se manejen adecuadamente
+app.options('*', (req, res) => {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.status(200).end();  // Responde con 200 OK para solicitudes OPTIONS
+});
 
 // Permitir solicitudes OPTIONS para preflight
 app.options('*', cors());  // Aquí se maneja OPTIONS de manera global
