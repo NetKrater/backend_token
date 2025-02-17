@@ -23,7 +23,7 @@ const pool = new Pool({
 const app = express();
 app.use(express.json());
 
-// 🚀 **Configuración de CORS corregida**
+// Configurar CORS para aceptar solicitudes desde los orígenes permitidos
 const allowedOrigins = [
     "https://cliente-html-git-master-oswaldo-cuestas-projects.vercel.app",  
     "https://generador-toke-git-master-oswaldo-cuestas-projects.vercel.app", 
@@ -33,7 +33,7 @@ const allowedOrigins = [
     "http://localhost:5501",
 ];
 
-// Configurar CORS para aceptar solicitudes desde los orígenes permitidos
+// Coloca cors antes de las rutas
 app.use(cors({
     origin: allowedOrigins,  // Permitir estos orígenes
     methods: ['GET', 'POST', 'OPTIONS'],  // Aseguramos que OPTIONS esté permitido
@@ -41,14 +41,8 @@ app.use(cors({
     credentials: true,  // Si necesitas compartir cookies
 }));
 
-// 🚀 **Manejo explícito de CORS para solicitudes OPTIONS**
-app.options('*', (req, res) => {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-    res.setHeader('Access-Control-Allow-Credentials', 'true');
-    res.status(200).end();
-});
+// Permitir solicitudes OPTIONS para preflight
+app.options('*', cors());  // Aquí se maneja OPTIONS de manera global
 
 
 // ✅ **Ruta para generar un token JWT**
