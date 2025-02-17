@@ -23,28 +23,31 @@ const pool = new Pool({
 const app = express();
 app.use(express.json());
 
-// Configuración de CORS
+// Configurar CORS para aceptar solicitudes desde los orígenes permitidos
 const allowedOrigins = [
+    "https://cliente-html-git-master-oswaldo-cuestas-projects.vercel.app",  
     "https://generador-toke-git-master-oswaldo-cuestas-projects.vercel.app", 
-    "http://localhost:3000",  // Si usas localhost en desarrollo
-    "https://cliente-html-git-master-oswaldo-cuestas-projects.vercel.app"
+    "http://127.0.0.1:5500", 
+    "http://127.0.0.1:5501", 
+    "http://localhost:5500", 
+    "http://localhost:5501",
 ];
 
-// Configurar CORS para aceptar solicitudes desde los orígenes permitidos
+// Usar CORS antes de las rutas
 app.use(cors({
-    origin: allowedOrigins,  // Permitir estos orígenes
-    methods: ['GET', 'POST', 'OPTIONS'],  // Métodos permitidos
-    allowedHeaders: ['Content-Type', 'Authorization'],  // Encabezados permitidos
-    credentials: true,  // Si necesitas compartir cookies o sesiones
+    origin: allowedOrigins, // Permitir estos orígenes
+    methods: ['GET', 'POST', 'OPTIONS'], // Métodos permitidos
+    allowedHeaders: ['Content-Type', 'Authorization'], // Cabeceras permitidas
+    credentials: true,  // Si necesitas enviar cookies o autenticación
 }));
 
-// Asegurarse de que las solicitudes OPTIONS se manejen adecuadamente
+// Responder explícitamente a las solicitudes OPTIONS (preflight)
 app.options('*', (req, res) => {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-    res.setHeader('Access-Control-Allow-Credentials', 'true');
-    res.status(200).end();  // Responde con 200 OK para solicitudes OPTIONS
+    res.setHeader('Access-Control-Allow-Origin', '*');  // Permitir todos los orígenes o ajustarlo
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');  // Métodos permitidos
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');  // Cabeceras permitidas
+    res.setHeader('Access-Control-Allow-Credentials', 'true');  // Si usas cookies, habilita esto
+    res.status(200).end();  // Responder con 200 OK para OPTIONS
 });
 
 // Permitir solicitudes OPTIONS para preflight
