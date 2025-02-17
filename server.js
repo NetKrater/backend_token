@@ -53,6 +53,10 @@ app.options('*', (req, res) => {
 // Permitir solicitudes OPTIONS para preflight
 app.options('*', cors());  // Aquí se maneja OPTIONS de manera global
 
+// ✅ **Ruta para la raíz del servidor**
+app.get('/', (req, res) => {
+    res.send('¡Servidor backend_token en funcionamiento!');
+});
 
 // ✅ **Ruta para generar un token JWT**
 app.post('/generate-token', async (req, res) => {
