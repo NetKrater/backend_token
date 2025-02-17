@@ -25,7 +25,7 @@ app.use(express.json());
 
 // 🚀 **Configuración de CORS corregida**
 const allowedOrigins = [
-    "https://generador-toke-git-master-oswaldo-cuestas-projects.vercel.app/", //Producción
+    "https://generador-toke-git-master-oswaldo-cuestas-projects.vercel.app", // Producción
     "http://127.0.0.1:5500", 
     "http://127.0.0.1:5501", 
     "http://localhost:5500", 
@@ -44,7 +44,6 @@ app.use(cors({
 app.options('*', cors());
 
 // ✅ **Ruta para generar un token JWT**
-// Ruta para generar un token JWT
 app.post('/generate-token', async (req, res) => {
     const { username, device_id, expiration } = req.body;
 
@@ -100,7 +99,6 @@ app.post('/generate-token', async (req, res) => {
         res.status(500).json({ error: 'Error al generar el token' });
     }
 });
-
 
 // ✅ **Ruta para verificar si el token es válido**
 app.post('/verify-token', async (req, res) => {
