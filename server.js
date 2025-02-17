@@ -41,8 +41,15 @@ app.use(cors({
     credentials: true,  // Si necesitas compartir cookies
 }));
 
-// Permitir todas las solicitudes OPTIONS (preflight)
-app.options('*', cors());
+// 🚀 **Manejo explícito de CORS para solicitudes OPTIONS**
+app.options('*', (req, res) => {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.status(200).end();
+});
+
 
 // ✅ **Ruta para generar un token JWT**
 app.post('/generate-token', async (req, res) => {
