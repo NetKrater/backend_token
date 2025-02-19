@@ -1,4 +1,4 @@
-console.log("Iniciando el servidor...");  // Mensaje para verificar que el servidor inicia
+console.log("Iniciando el servidor...");
 
 const express = require('express');
 const http = require('http');
