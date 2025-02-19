@@ -33,7 +33,7 @@ const allowedOrigins = [
     "http://localhost:5501",
 ];
 
-// Usar CORS antes de las rutas
+// Usar CORS antes de las rutas.
 app.use(cors({
     origin: allowedOrigins, // Permitir estos orígenes
     methods: ['GET', 'POST', 'OPTIONS'], // Métodos permitidos
