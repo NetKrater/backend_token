@@ -4,7 +4,6 @@ const express = require('express');
 const http = require('http');
 const https = require('https');
 const fs = require('fs');
-const { Server } = require('socket.io');
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
