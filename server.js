@@ -11,11 +11,11 @@ const { Pool } = require('pg'); // Importamos el Pool de pg para conectarnos a P
 
 // Conexión a la base de datos sessions_db (sesiones de usuario)
 const pool = new Pool({
-    user: 'postgres',
-    host: 'localhost',  // o el host de PostgreSQL
-    database: 'sessions_db',  // Base de datos para sesiones
-    password: '132187ok',
-    port: 5432,
+    user: process.env.DB_USER,
+    host: process.env.DB_HOST,
+    database: process.env.DB_NAME,
+    password: process.env.DB_PASSWORD,
+    port: process.env.DB_PORT,
 });
 
 // Crear la aplicación express
@@ -78,15 +78,17 @@ app.post('/generate-token', async (req, res) => {
         exp: Math.floor(expirationDate.getTime() / 1000), // Expiración en segundos
     };
 
-    const token = jwt.sign(payload, process.env.JWT_SECRET_KEY || 'mi_clave_secreta');
+    const token = jwt.sign(payload, process.env.JWT_SECRET_KEY);
 
     try {
         // Verificar si el token ya existe en la base de datos
+        console.log('Verificando si el token ya existe en la base de datos');
         const result = await pool.query('SELECT * FROM sessions WHERE token = $1', [token]);
 
         if (result.rows.length > 0) {
             const activeSession = result.rows[0];
             if (activeSession.device_id !== device_id) {
+                console.log('Token ya existe y está siendo usado en otro dispositivo');
                 await pool.query('UPDATE sessions SET valid = false WHERE token = $1', [token]);
                 await pool.query(
                     'UPDATE sessions SET device_id = $1, expiration_time = $2 WHERE token = $3',
@@ -95,15 +97,18 @@ app.post('/generate-token', async (req, res) => {
                 return res.json({ token, message: 'Token trasladado a otro dispositivo' });
             }
         } else {
+            console.log('Token no encontrado, verificando usuario');
             const userResult = await pool.query('SELECT id FROM users WHERE username = $1', [username]);
             let userId;
             if (userResult.rows.length === 0) {
+                console.log('Usuario no encontrado, creando usuario');
                 const insertUserResult = await pool.query('INSERT INTO users (username) VALUES ($1) RETURNING id', [username]);
                 userId = insertUserResult.rows[0].id;
             } else {
                 userId = userResult.rows[0].id;
             }
 
+            console.log('Insertando nueva sesión en la base de datos');
             await pool.query('INSERT INTO sessions(token, device_id, username, expiration_time, user_id) VALUES($1, $2, $3, $4, $5)', [token, device_id, username, expirationDate, userId]);
         }
 
@@ -125,7 +130,7 @@ app.post('/verify-token', async (req, res) => {
 
     try {
         // Verificar el token
-        const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY || 'mi_clave_secreta');
+        const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY);
         const username = decoded.username;
         const deviceId = decoded.device_id;
 
@@ -190,13 +195,13 @@ app.post('/delete-token', async (req, res) => {
     }
 });
 
-// ✅ **Crear el servidor HTTP o HTTPS**.
+// ✅ **Crear el servidor HTTP o HTTPS**
 let server;
 if (process.env.NODE_ENV === 'production') {
     const sslOptions = {
-        key: fs.readFileSync('/ruta/a/tu/clave-privada.key'),
-        cert: fs.readFileSync('/ruta/a/tu/certificado.crt'),
-        ca: fs.readFileSync('/ruta/a/tu/cadena-de-certificados.pem'),
+        key: fs.readFileSync(process.env.SSL_KEY_PATH || '/ruta/a/tu/clave-privada.key'),
+        cert: fs.readFileSync(process.env.SSL_CERT_PATH || '/ruta/a/tu/certificado.crt'),
+        ca: fs.readFileSync(process.env.SSL_CA_PATH || '/ruta/a/tu/cadena-de-certificados.pem'),
     };
 
     server = https.createServer(sslOptions, app);
