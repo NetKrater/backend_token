@@ -7,7 +7,7 @@ const fs = require('fs');
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
-const { Pool } = require('pg'); // Importamos el Pool de pg para conectarnos a PostgreSQL
+const { Pool } = require('pg');
 
 // Conexión a la base de datos sessions_db (sesiones de usuario)
 const pool = new Pool({
@@ -25,33 +25,39 @@ app.use(express.json());
 // Configurar CORS para aceptar solicitudes desde los orígenes permitidos
 const allowedOrigins = [
     "https://cliente-html-git-master-oswaldo-cuestas-projects.vercel.app/generador_tokend/index.html",
-    "https://cliente-html-git-master-oswaldo-cuestas-projects.vercel.app",  
-    "https://generador-toke-git-master-oswaldo-cuestas-projects.vercel.app", 
-    "http://127.0.0.1:5500", 
-    "http://127.0.0.1:5501", 
-    "http://localhost:5500", 
+    "https://cliente-html-git-master-oswaldo-cuestas-projects.vercel.app",
+    "https://generador-toke-git-master-oswaldo-cuestas-projects.vercel.app",
+    "http://127.0.0.1:5500",
+    "http://127.0.0.1:5501",
+    "http://localhost:5500",
     "http://localhost:5501",
 ];
 
 // Usar CORS antes de las rutas.
 app.use(cors({
-    origin: allowedOrigins, // Permitir estos orígenes
-    methods: ['GET', 'POST', 'OPTIONS'], // Métodos permitidos
-    allowedHeaders: ['Content-Type', 'Authorization'], // Cabeceras permitidas
-    credentials: true,  // Si necesitas enviar cookies o autenticación
+    origin: (origin, callback) => {
+        if (allowedOrigins.includes(origin) || !origin) {
+            callback(null, true);
+        } else {
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
+    methods: ['GET', 'POST', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true,
 }));
 
 // Responder explícitamente a las solicitudes OPTIONS (preflight)
 app.options('*', (req, res) => {
-    res.setHeader('Access-Control-Allow-Origin', '*');  // Permitir todos los orígenes o ajustarlo
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');  // Métodos permitidos
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');  // Cabeceras permitidas
-    res.setHeader('Access-Control-Allow-Credentials', 'true');  // Si usas cookies, habilita esto
-    res.status(200).end();  // Responder con 200 OK para OPTIONS
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.status(200).end();
 });
 
 // Permitir solicitudes OPTIONS para preflight
-app.options('*', cors());  // Aquí se maneja OPTIONS de manera global
+app.options('*', cors());
 
 // ✅ **Ruta para la raíz del servidor**
 app.get('/', (req, res) => {
@@ -75,7 +81,7 @@ app.post('/generate-token', async (req, res) => {
     const payload = {
         username: username,
         device_id: device_id,
-        exp: Math.floor(expirationDate.getTime() / 1000), // Expiración en segundos
+        exp: Math.floor(expirationDate.getTime() / 1000),
     };
 
     const token = jwt.sign(payload, process.env.JWT_SECRET_KEY);
@@ -122,7 +128,7 @@ app.post('/generate-token', async (req, res) => {
 
 // ✅ **Ruta para verificar si el token es válido**
 app.post('/verify-token', async (req, res) => {
-    const token = req.headers['authorization']?.split(' ')[1]; // Obtener el token del header
+    const token = req.headers['authorization']?.split(' ')[1];
 
     if (!token) {
         return res.status(400).json({ error: 'Token no proporcionado' });
@@ -170,7 +176,7 @@ app.post('/verify-token', async (req, res) => {
 
 // ✅ **Ruta para eliminar un token específico**
 app.post('/delete-token', async (req, res) => {
-    const { tokenToDelete } = req.body; // Token a eliminar desde el request
+    const { tokenToDelete } = req.body;
 
     if (!tokenToDelete) {
         return res.status(400).json({ error: 'Token a eliminar no proporcionado' });
@@ -199,9 +205,9 @@ app.post('/delete-token', async (req, res) => {
 let server;
 if (process.env.NODE_ENV === 'production') {
     const sslOptions = {
-        key: fs.readFileSync(process.env.SSL_KEY_PATH || '/ruta/a/tu/clave-privada.key'),
-        cert: fs.readFileSync(process.env.SSL_CERT_PATH || '/ruta/a/tu/certificado.crt'),
-        ca: fs.readFileSync(process.env.SSL_CA_PATH || '/ruta/a/tu/cadena-de-certificados.pem'),
+        key: fs.readFileSync(process.env.SSL_KEY_PATH),
+        cert: fs.readFileSync(process.env.SSL_CERT_PATH),
+        ca: fs.readFileSync(process.env.SSL_CA_PATH),
     };
 
     server = https.createServer(sslOptions, app);
