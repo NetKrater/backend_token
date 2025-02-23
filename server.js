@@ -179,10 +179,10 @@ app.post('/verify-token', async (req, res) => {
                 [deviceId, activeSession.expiration_time, token]
             );
 
-            return res.json({ valid: true, message: 'Token trasladado a otro dispositivo' });
+            return res.json({ valid: true, message: 'Token trasladado a otro dispositivo', expiration: activeSession.expiration_time });
         }
 
-        res.json({ valid: true, username });
+        res.json({ valid: true, username, expiration: activeSession.expiration_time });
 
     } catch (err) {
         console.error('Error verificando el token:', err);
@@ -206,7 +206,7 @@ app.post('/delete-token', async (req, res) => {
             return res.status(404).json({ error: 'Token no encontrado en la base de datos' });
         }
 
-        // Eliminar el token de la base de datos
+        // Eliminar el token de la base de datos.
         await pool.query('DELETE FROM sessions WHERE token = $1', [tokenToDelete]);
 
         res.json({ message: `El token ha sido eliminado correctamente.` });
