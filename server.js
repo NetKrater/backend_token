@@ -11,20 +11,34 @@ const { Pool } = require('pg');
 
 // Conexión a la base de datos sessions_db (sesiones de usuario)
 const pool = new Pool({
-    user: process.env.DB_USER,
-    host: process.env.DB_HOST,
-    database: process.env.DB_NAME,
-    password: process.env.DB_PASSWORD,
-    port: process.env.DB_PORT,
+    user: 'postgres',           // Usuario de la base de datos
+    host: '144.126.156.186',    // Servidor de PostgreSQL
+    database: 'sessions_db',    // Nombre de la base de datos
+    password: '132187ok',       // Contraseña del usuario
+    port: 5432,                 // Puerto de PostgreSQL
 });
 
 // Verificar la conexión a la base de datos al iniciar
-pool.query('SELECT NOW()')
-    .then(() => console.log('Conexión a la base de datos establecida'))
-    .catch(err => {
-        console.error('Error conectando a la base de datos:', err);
-        process.exit(1); // Detener la aplicación si no se puede conectar a la base de datos
-    });
+const checkDatabase = async () => {
+    try {
+        const dbResult = await pool.query('SELECT current_database()');
+        console.log('Conectado a la base de datos:', dbResult.rows[0].current_database);
+
+        const tableResult = await pool.query(
+            'SELECT * FROM information_schema.tables WHERE table_name = $1',
+            ['sessions']
+        );
+        if (tableResult.rows.length === 0) {
+            throw new Error('La tabla sessions no existe en la base de datos.');
+        }
+        console.log('La tabla sessions existe.');
+    } catch (err) {
+        console.error('Error verificando la base de datos:', err);
+        process.exit(1); // Detener la aplicación si hay un error
+    }
+};
+
+checkDatabase();
 
 // Crear la aplicación express
 const app = express();
