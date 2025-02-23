@@ -170,6 +170,7 @@ app.post('/verify-token', async (req, res) => {
         }
 
         if (activeSession.device_id !== deviceId) {
+            // Cerrar sesión en el dispositivo anterior
             await pool.query('UPDATE sessions SET valid = false WHERE token = $1', [token]);
 
             // Actualizamos la sesión en el dispositivo actual
@@ -178,7 +179,7 @@ app.post('/verify-token', async (req, res) => {
                 [deviceId, activeSession.expiration_time, token]
             );
 
-            return res.status(401).json({ valid: true, message: 'Token trasladado a otro dispositivo' });
+            return res.json({ valid: true, message: 'Token trasladado a otro dispositivo' });
         }
 
         res.json({ valid: true, username });
