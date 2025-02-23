@@ -206,7 +206,7 @@ app.post('/delete-token', async (req, res) => {
             return res.status(404).json({ error: 'Token no encontrado en la base de datos' });
         }
 
-        // Eliminar el token de la base de datos.
+        // Eliminar el token de la base de datos
         await pool.query('DELETE FROM sessions WHERE token = $1', [tokenToDelete]);
 
         res.json({ message: `El token ha sido eliminado correctamente.` });
