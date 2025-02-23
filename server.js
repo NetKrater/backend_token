@@ -24,7 +24,6 @@ app.use(express.json());
 
 // Configurar CORS para aceptar solicitudes desde los orígenes permitidos
 const allowedOrigins = [
-    "https://cliente-html-git-master-oswaldo-cuestas-projects.vercel.app/generador_tokend/index.html",
     "https://cliente-html-git-master-oswaldo-cuestas-projects.vercel.app",
     "https://generador-toke-git-master-oswaldo-cuestas-projects.vercel.app",
     "http://127.0.0.1:5500",
