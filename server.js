@@ -18,6 +18,14 @@ const pool = new Pool({
     port: process.env.DB_PORT,
 });
 
+// Verificar la conexión a la base de datos al iniciar
+pool.query('SELECT NOW()')
+    .then(() => console.log('Conexión a la base de datos establecida'))
+    .catch(err => {
+        console.error('Error conectando a la base de datos:', err);
+        process.exit(1); // Detener la aplicación si no se puede conectar a la base de datos
+    });
+
 // Crear la aplicación express
 const app = express();
 app.use(express.json());
@@ -32,7 +40,6 @@ const allowedOrigins = [
     "http://localhost:5501",
 ];
 
-// Usar CORS antes de las rutas.
 app.use(cors({
     origin: (origin, callback) => {
         if (allowedOrigins.includes(origin) || !origin) {
@@ -47,15 +54,6 @@ app.use(cors({
 }));
 
 // Responder explícitamente a las solicitudes OPTIONS (preflight)
-app.options('*', (req, res) => {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-    res.setHeader('Access-Control-Allow-Credentials', 'true');
-    res.status(200).end();
-});
-
-// Permitir solicitudes OPTIONS para preflight
 app.options('*', cors());
 
 // ✅ **Ruta para la raíz del servidor**
@@ -114,7 +112,10 @@ app.post('/generate-token', async (req, res) => {
             }
 
             console.log('Insertando nueva sesión en la base de datos');
-            await pool.query('INSERT INTO sessions(token, device_id, username, expiration_time, user_id) VALUES($1, $2, $3, $4, $5)', [token, device_id, username, expirationDate, userId]);
+            await pool.query(
+                'INSERT INTO sessions(token, device_id, username, expiration_time, user_id) VALUES($1, $2, $3, $4, $5)',
+                [token, device_id, username, expirationDate, userId]
+            );
         }
 
         res.json({ token });
