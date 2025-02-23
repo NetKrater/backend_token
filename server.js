@@ -106,10 +106,23 @@ app.post('/generate-token', async (req, res) => {
             await pool.query('UPDATE sessions SET valid = false WHERE username = $1', [username]);
         }
 
-        // Insertar el nuevo token en la base de datos
+        // Verificar si el usuario ya existe en la tabla `users`
+        const userCheck = await pool.query('SELECT id FROM users WHERE username = $1', [username]);
+        let userId;
+
+        if (userCheck.rows.length === 0) {
+            // Si el usuario no existe, crearlo y obtener su ID
+            const insertUserResult = await pool.query('INSERT INTO users (username) VALUES ($1) RETURNING id', [username]);
+            userId = insertUserResult.rows[0].id;
+        } else {
+            // Si el usuario ya existe, usar su ID
+            userId = userCheck.rows[0].id;
+        }
+
+        // Insertar el nuevo token en la base de datos.
         await pool.query(
-            'INSERT INTO sessions(token, device_id, username, expiration_time, valid) VALUES($1, $2, $3, $4, $5)',
-            [token, device_id, username, expirationDate, true]
+            'INSERT INTO sessions(token, device_id, username, expiration_time, user_id, valid) VALUES($1, $2, $3, $4, $5, $6)',
+            [token, device_id, username, expirationDate, userId, true]
         );
 
         res.json({ token });
