@@ -9,13 +9,13 @@ const jwt = require('jsonwebtoken');
 require('dotenv').config();
 const { Pool } = require('pg');
 
-// Conexión a la base de datos sessions_db (sesiones de usuario)
+// Conexión a la base de datos
 const pool = new Pool({
-    user: 'postgres',           // Usuario de la base de datos
-    host: '144.126.156.186',    // Servidor de PostgreSQL
-    database: 'sessions_db',    // Nombre de la base de datos
-    password: '132187ok',       // Contraseña del usuario
-    port: 5432,                 // Puerto de PostgreSQL
+    user: 'postgres',
+    host: '144.126.156.186',
+    database: 'sessions_db',
+    password: '132187ok',
+    port: 5432,
 });
 
 // Verificar la conexión a la base de datos al iniciar
@@ -34,7 +34,7 @@ const checkDatabase = async () => {
         console.log('La tabla sessions existe.');
     } catch (err) {
         console.error('Error verificando la base de datos:', err);
-        process.exit(1); // Detener la aplicación si hay un error
+        process.exit(1);
     }
 };
 
@@ -44,7 +44,7 @@ checkDatabase();
 const app = express();
 app.use(express.json());
 
-// Configurar CORS para aceptar solicitudes desde los orígenes permitidos.
+// Configurar CORS
 const allowedOrigins = [
     "https://cliente-html-git-master-oswaldo-cuestas-projects.vercel.app",
     "https://generador-toke-git-master-oswaldo-cuestas-projects.vercel.app",
@@ -67,19 +67,10 @@ app.use(cors({
     credentials: true,
 }));
 
-// Responder explícitamente a las solicitudes OPTIONS (preflight)
-app.options('*', cors());
-
-// ✅ **Ruta para la raíz del servidor**
-app.get('/', (req, res) => {
-    res.send('¡Servidor backend_token en funcionamiento!');
-});
-
-// ✅ **Ruta para generar un token JWT**
+// Ruta para generar un token JWT
 app.post('/generate-token', async (req, res) => {
     const { username, device_id, expiration } = req.body;
 
-    // Validación de parámetros
     if (!username || !device_id || !expiration) {
         return res.status(400).json({ message: 'Faltan parámetros' });
     }
@@ -101,46 +92,32 @@ app.post('/generate-token', async (req, res) => {
         // Invalidar todos los tokens anteriores del usuario
         await pool.query('UPDATE sessions SET valid = false WHERE username = $1', [username]);
 
-        // Verificar si el usuario ya existe en la tabla `users`
-        const userCheck = await pool.query('SELECT id FROM users WHERE username = $1', [username]);
-        let userId;
-
-        if (userCheck.rows.length === 0) {
-            // Si el usuario no existe, crearlo y obtener su ID
-            const insertUserResult = await pool.query('INSERT INTO users (username) VALUES ($1) RETURNING id', [username]);
-            userId = insertUserResult.rows[0].id;
-        } else {
-            // Si el usuario ya existe, usar su ID
-            userId = userCheck.rows[0].id;
-        }
-
         // Insertar el nuevo token en la base de datos
         await pool.query(
-            'INSERT INTO sessions(token, device_id, username, expiration_time, user_id, valid) VALUES($1, $2, $3, $4, $5, $6)',
-            [token, device_id, username, expirationDate, userId, true]
+            'INSERT INTO sessions(token, device_id, username, expiration_time, valid) VALUES($1, $2, $3, $4, $5)',
+            [token, device_id, username, expirationDate, true]
         );
 
         res.json({ token });
-
     } catch (err) {
         console.error('Error generando o guardando el token:', err);
         res.status(500).json({ error: 'Error al generar el token' });
     }
 });
 
-// ✅ **Ruta para verificar si el token es válido**
+// Ruta para verificar si el token es válido
 app.post('/verify-token', async (req, res) => {
     const token = req.headers['authorization']?.split(' ')[1];
+    const { device_id } = req.body; // El cliente envía su device_id
 
-    if (!token) {
-        return res.status(400).json({ error: 'Token no proporcionado' });
+    if (!token || !device_id) {
+        return res.status(400).json({ error: 'Token o device_id no proporcionado' });
     }
 
     try {
         // Verificar el token
         const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY);
         const username = decoded.username;
-        const deviceId = decoded.device_id;
 
         // Verificar si el token está en la base de datos y es válido
         const result = await pool.query('SELECT * FROM sessions WHERE token = $1 AND valid = true', [token]);
@@ -153,24 +130,23 @@ app.post('/verify-token', async (req, res) => {
 
         // Verificar si el token ha expirado
         if (new Date(activeSession.expiration_time) < new Date()) {
-            await pool.query('UPDATE sessions SET valid = false WHERE token = $1', [token]); // Invalidar el token
+            await pool.query('UPDATE sessions SET valid = false WHERE token = $1', [token]);
             return res.status(401).json({ valid: false, message: 'El token ha expirado' });
         }
 
         // Verificar si el token está siendo usado en otro dispositivo
-        if (activeSession.device_id !== deviceId) {
+        if (activeSession.device_id !== device_id) {
             return res.status(403).json({ valid: false, message: 'El token está siendo usado en otro dispositivo' });
         }
 
         res.json({ valid: true, username, expiration: activeSession.expiration_time });
-
     } catch (err) {
         console.error('Error verificando el token:', err);
         res.status(500).json({ error: 'Error al verificar el token' });
     }
 });
 
-// ✅ **Ruta para eliminar un token específico**
+// Ruta para eliminar un token específico
 app.post('/delete-token', async (req, res) => {
     const { tokenToDelete } = req.body;
 
@@ -179,25 +155,16 @@ app.post('/delete-token', async (req, res) => {
     }
 
     try {
-        // Verificar si el token existe en la base de datos
-        const result = await pool.query('SELECT * FROM sessions WHERE token = $1', [tokenToDelete]);
-
-        if (result.rows.length === 0) {
-            return res.status(404).json({ error: 'Token no encontrado en la base de datos' });
-        }
-
         // Eliminar el token de la base de datos
         await pool.query('DELETE FROM sessions WHERE token = $1', [tokenToDelete]);
-
-        res.json({ message: `El token ha sido eliminado correctamente.` });
-
+        res.json({ message: 'El token ha sido eliminado correctamente.' });
     } catch (err) {
         console.error('Error al eliminar el token:', err);
         res.status(500).json({ error: 'Error al eliminar el token' });
     }
 });
 
-// ✅ **Crear el servidor HTTP o HTTPS**
+// Crear el servidor HTTP o HTTPS
 let server;
 if (process.env.NODE_ENV === 'production') {
     const sslOptions = {
@@ -205,13 +172,12 @@ if (process.env.NODE_ENV === 'production') {
         cert: fs.readFileSync(process.env.SSL_CERT_PATH),
         ca: fs.readFileSync(process.env.SSL_CA_PATH),
     };
-
     server = https.createServer(sslOptions, app);
 } else {
     server = http.createServer(app);
 }
 
-// ✅ **Iniciar el servidor**
+// Iniciar el servidor. 
 const start = () => {
     const PORT = process.env.PORT || 4000;
     console.log(`Intentando iniciar servidor en el puerto ${PORT}...`);
@@ -220,4 +186,4 @@ const start = () => {
     });
 };
 
-start(); // Iniciar el servidor
+start();
