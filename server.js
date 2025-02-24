@@ -98,13 +98,8 @@ app.post('/generate-token', async (req, res) => {
     const token = jwt.sign(payload, process.env.JWT_SECRET_KEY);
 
     try {
-        // Verificar si el usuario ya tiene un token activo en otro dispositivo
-        const userResult = await pool.query('SELECT * FROM sessions WHERE username = $1 AND valid = true', [username]);
-
-        if (userResult.rows.length > 0) {
-            // Invalidar el token anterior
-            await pool.query('UPDATE sessions SET valid = false WHERE username = $1', [username]);
-        }
+        // Invalidar todos los tokens anteriores del usuario
+        await pool.query('UPDATE sessions SET valid = false WHERE username = $1', [username]);
 
         // Verificar si el usuario ya existe en la tabla `users`
         const userCheck = await pool.query('SELECT id FROM users WHERE username = $1', [username]);
