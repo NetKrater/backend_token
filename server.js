@@ -176,6 +176,7 @@ app.post('/verify-token', async (req, res) => {
     }
 });
 
+
 // ✅ **Ruta para verificar si el token es válido**
 app.post('/verify-token', async (req, res) => {
     const token = req.headers['authorization']?.split(' ')[1];
