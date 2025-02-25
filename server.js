@@ -163,6 +163,54 @@ app.post('/verify-token', async (req, res) => {
             return res.status(401).json({ valid: false, message: 'El token ha expirado' });
         }
 
+        // Verificar si el token está siendo usado en otro dispositivo
+        if (activeSession.device_id !== deviceId) {
+            return res.status(403).json({ valid: false, message: 'El token está siendo usado en otro dispositivo' });
+        }
+
+        res.json({ valid: true, username, expiration: activeSession.expiration_time });
+
+    } catch (err) {
+        console.error('Error verificando el token:', err);
+        res.status(500).json({ error: 'Error al verificar el token' });
+    }
+});
+
+// ✅ **Ruta para verificar si el token es válido**
+app.post('/verify-token', async (req, res) => {
+    const token = req.headers['authorization']?.split(' ')[1];
+
+    if (!token) {
+        return res.status(400).json({ error: 'Token no proporcionado' });
+    }
+
+    try {
+        // Verificar el token
+        const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY);
+        const username = decoded.username;
+        const deviceId = decoded.device_id;
+
+        // Invalidar todos los tokens anteriores del usuario, excepto el actual
+        await pool.query(
+            'UPDATE sessions SET valid = false WHERE username = $1 AND token != $2',
+            [username, token]
+        );
+
+        // Verificar si el token está en la base de datos y es válido
+        const result = await pool.query('SELECT * FROM sessions WHERE token = $1 AND valid = true', [token]);
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Token no encontrado o no válido' });
+        }
+
+        const activeSession = result.rows[0];
+
+        // Verificar si el token ha expirado
+        if (new Date(activeSession.expiration_time) < new Date()) {
+            await pool.query('UPDATE sessions SET valid = false WHERE token = $1', [token]); // Invalidar el token
+            return res.status(401).json({ valid: false, message: 'El token ha expirado' });
+        }
+
         res.json({ valid: true, username, expiration: activeSession.expiration_time });
 
     } catch (err) {
