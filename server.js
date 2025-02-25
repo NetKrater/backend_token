@@ -142,6 +142,12 @@ app.post('/verify-token', async (req, res) => {
         const username = decoded.username;
         const deviceId = decoded.device_id;
 
+        // Invalidar todos los tokens anteriores del usuario, excepto el actual
+        await pool.query(
+            'UPDATE sessions SET valid = false WHERE username = $1 AND token != $2',
+            [username, token]
+        );
+
         // Verificar si el token está en la base de datos y es válido
         const result = await pool.query('SELECT * FROM sessions WHERE token = $1 AND valid = true', [token]);
 
@@ -155,11 +161,6 @@ app.post('/verify-token', async (req, res) => {
         if (new Date(activeSession.expiration_time) < new Date()) {
             await pool.query('UPDATE sessions SET valid = false WHERE token = $1', [token]); // Invalidar el token
             return res.status(401).json({ valid: false, message: 'El token ha expirado' });
-        }
-
-        // Verificar si el token está siendo usado en otro dispositivo
-        if (activeSession.device_id !== deviceId) {
-            return res.status(403).json({ valid: false, message: 'El token está siendo usado en otro dispositivo' });
         }
 
         res.json({ valid: true, username, expiration: activeSession.expiration_time });
@@ -194,6 +195,25 @@ app.post('/delete-token', async (req, res) => {
     } catch (err) {
         console.error('Error al eliminar el token:', err);
         res.status(500).json({ error: 'Error al eliminar el token' });
+    }
+});
+
+// ✅ **Ruta para forzar el cierre de sesión en todos los dispositivos**
+app.post('/force-logout', async (req, res) => {
+    const { username } = req.body;
+
+    if (!username) {
+        return res.status(400).json({ error: 'Nombre de usuario no proporcionado' });
+    }
+
+    try {
+        // Invalidar todos los tokens del usuario
+        await pool.query('UPDATE sessions SET valid = false WHERE username = $1', [username]);
+
+        res.json({ message: 'Sesión cerrada en todos los dispositivos' });
+    } catch (err) {
+        console.error('Error forzando el cierre de sesión:', err);
+        res.status(500).json({ error: 'Error al forzar el cierre de sesión' });
     }
 });
 
