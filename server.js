@@ -174,6 +174,9 @@ app.post('/verify-token', async (req, res) => {
                 [newToken, device_id, username, activeSession.expiration_time, activeSession.user_id, true]
             );
 
+            // Notificar al primer dispositivo que su sesión ha sido cerrada (opcional)
+            // Esto puede hacerse mediante WebSockets o algún otro mecanismo de notificación.
+
             return res.json({ valid: true, token: newToken, username, expiration: activeSession.expiration_time });
         }
 
