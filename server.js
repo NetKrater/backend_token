@@ -168,14 +168,14 @@ app.post('/verify-token', async (req, res) => {
                 process.env.JWT_SECRET_KEY
             );
 
+            // Eliminar el token anterior antes de insertar el nuevo
+            await pool.query('DELETE FROM sessions WHERE token = $1', [token]);
+
             // Insertar el nuevo token en la base de datos
             await pool.query(
                 'INSERT INTO sessions(token, device_id, username, expiration_time, user_id, valid) VALUES($1, $2, $3, $4, $5, $6)',
                 [newToken, device_id, username, activeSession.expiration_time, activeSession.user_id, true]
             );
-
-            // Notificar al primer dispositivo que su sesión ha sido cerrada (opcional)
-            // Esto puede hacerse mediante WebSockets o algún otro mecanismo de notificación.
 
             return res.json({ valid: true, token: newToken, username, expiration: activeSession.expiration_time });
         }
