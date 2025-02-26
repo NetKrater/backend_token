@@ -138,15 +138,15 @@ app.post('/verify-token', async (req, res) => {
     }
 
     try {
-        // Verificar el token
+        // Verificar el token JWT
         const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY);
         const username = decoded.username;
 
-        // Verificar si el token está en la base de datos y es válido
-        const result = await pool.query('SELECT * FROM sessions WHERE token = $1 AND valid = true', [token]);
+        // Buscar el token en la base de datos
+        const result = await pool.query('SELECT * FROM sessions WHERE token = $1', [token]);
 
         if (result.rows.length === 0) {
-            return res.status(404).json({ error: 'Token no encontrado o no válido' });
+            return res.status(404).json({ error: 'Token no encontrado en la base de datos' });
         }
 
         const activeSession = result.rows[0];
@@ -159,15 +159,16 @@ app.post('/verify-token', async (req, res) => {
 
         // Verificar si el token está siendo usado en otro dispositivo
         if (activeSession.device_id !== device_id) {
-            // Invalidar el token en el primer dispositivo
+            // Invalidar el token en el dispositivo anterior
             await pool.query('UPDATE sessions SET valid = false WHERE token = $1', [token]);
 
-            // Insertar un nuevo token para el nuevo dispositivo
+            // Crear un nuevo token para el nuevo dispositivo
             const newToken = jwt.sign(
                 { username, device_id, exp: Math.floor(new Date(activeSession.expiration_time).getTime() / 1000) },
                 process.env.JWT_SECRET_KEY
             );
 
+            // Insertar el nuevo token en la base de datos
             await pool.query(
                 'INSERT INTO sessions(token, device_id, username, expiration_time, user_id, valid) VALUES($1, $2, $3, $4, $5, $6)',
                 [newToken, device_id, username, activeSession.expiration_time, activeSession.user_id, true]
@@ -176,7 +177,7 @@ app.post('/verify-token', async (req, res) => {
             return res.json({ valid: true, token: newToken, username, expiration: activeSession.expiration_time });
         }
 
-        // Si todo está bien, el token es válido
+        // Si el token es válido y el device_id coincide, permitir el acceso
         res.json({ valid: true, username, expiration: activeSession.expiration_time });
 
     } catch (err) {
