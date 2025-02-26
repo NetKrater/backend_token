@@ -131,7 +131,7 @@ app.post('/generate-token', async (req, res) => {
 // ✅ **Ruta para verificar si el token es válido**
 app.post('/verify-token', async (req, res) => {
     const token = req.headers['authorization']?.split(' ')[1];
-    const { device_id } = req.body; // Obtener el device_id del cuerpo de la solicitud
+    const { device_id } = req.body;
 
     if (!token || !device_id) {
         return res.status(400).json({ error: 'Token o device_id no proporcionado' });
@@ -153,7 +153,7 @@ app.post('/verify-token', async (req, res) => {
 
         // Verificar si el token ha expirado
         if (new Date(activeSession.expiration_time) < new Date()) {
-            await pool.query('UPDATE sessions SET valid = false WHERE token = $1', [token]); // Invalidar el token
+            await pool.query('UPDATE sessions SET valid = false WHERE token = $1', [token]);
             return res.status(401).json({ valid: false, message: 'El token ha expirado' });
         }
 
