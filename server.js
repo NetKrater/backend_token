@@ -159,8 +159,8 @@ app.post('/verify-token', async (req, res) => {
 
         // Verificar si el token está siendo usado en otro dispositivo
         if (activeSession.device_id !== device_id) {
-            // Invalidar el token en el dispositivo anterior
-            await pool.query('UPDATE sessions SET valid = false WHERE token = $1', [token]);
+            // Invalidar todos los tokens anteriores del usuario
+            await pool.query('UPDATE sessions SET valid = false WHERE username = $1', [username]);
 
             // Crear un nuevo token para el nuevo dispositivo
             const newToken = jwt.sign(
