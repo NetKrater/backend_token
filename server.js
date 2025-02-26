@@ -162,11 +162,14 @@ app.post('/verify-token', async (req, res) => {
             // Invalidar todos los tokens anteriores del usuario
             await pool.query('UPDATE sessions SET valid = false WHERE username = $1', [username]);
 
-            // Crear un nuevo token para el nuevo dispositivo
+            // Generar un nuevo token único para el nuevo dispositivo
             const newToken = jwt.sign(
                 { username, device_id, exp: Math.floor(new Date(activeSession.expiration_time).getTime() / 1000) },
                 process.env.JWT_SECRET_KEY
             );
+
+            // Eliminar el token anterior antes de insertar el nuevo
+            await pool.query('DELETE FROM sessions WHERE token = $1', [token]);
 
             // Insertar el nuevo token en la base de datos
             await pool.query(
