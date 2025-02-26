@@ -168,9 +168,6 @@ app.post('/verify-token', async (req, res) => {
                 process.env.JWT_SECRET_KEY
             );
 
-            // Eliminar el token anterior antes de insertar el nuevo
-            await pool.query('DELETE FROM sessions WHERE token = $1', [token]);
-
             // Insertar el nuevo token en la base de datos
             await pool.query(
                 'INSERT INTO sessions(token, device_id, username, expiration_time, user_id, valid) VALUES($1, $2, $3, $4, $5, $6)',
