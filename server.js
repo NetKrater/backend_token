@@ -8,6 +8,7 @@ const cors = require('cors');
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
 const { Pool } = require('pg');
+const setupSocket = require('./socket'); // Importar la configuración de Socket.IO
 
 // Conexión a la base de datos sessions_db (sesiones de usuario)
 const pool = new Pool({
@@ -177,6 +178,9 @@ app.post('/verify-token', async (req, res) => {
                 [newToken, device_id, username, activeSession.expiration_time, activeSession.user_id, true]
             );
 
+            // Notificar al primer dispositivo que su sesión ha sido cerrada
+            io.emit('logout_device', activeSession.device_id);
+
             return res.json({ valid: true, token: newToken, username, expiration: activeSession.expiration_time });
         }
 
@@ -188,7 +192,6 @@ app.post('/verify-token', async (req, res) => {
         res.status(500).json({ error: 'Error al verificar el token' });
     }
 });
-
 
 // ✅ **Ruta para eliminar un token específico**
 app.post('/delete-token', async (req, res) => {
@@ -249,6 +252,9 @@ if (process.env.NODE_ENV === 'production') {
 } else {
     server = http.createServer(app);
 }
+
+// Configurar Socket.IO
+const io = setupSocket(server);
 
 // ✅ **Iniciar el servidor**
 const start = () => {
