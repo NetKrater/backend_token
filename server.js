@@ -160,13 +160,7 @@ app.post('/verify-token', async (req, res) => {
 
         // Verificar si el token está siendo usado en otro dispositivo
         if (activeSession.device_id !== device_id) {
-            // Invalidar el token en el primer dispositivo
-            await pool.query('UPDATE sessions SET valid = false WHERE token = $1', [token]);
-
-            // Notificar al primer dispositivo que su sesión ha sido cerrada
-            io.emit('logout_device', activeSession.device_id);
-
-            // Redirigir al segundo dispositivo a la página de inicio
+            // No invalidar el token, pero no permitir el acceso en el segundo dispositivo
             return res.status(403).json({ valid: false, message: 'El token está siendo usado en otro dispositivo' });
         }
 
