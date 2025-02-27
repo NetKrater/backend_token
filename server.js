@@ -160,28 +160,11 @@ app.post('/verify-token', async (req, res) => {
 
         // Verificar si el token está siendo usado en otro dispositivo
         if (activeSession.device_id !== device_id) {
-            // Invalidar todos los tokens anteriores del usuario
-            await pool.query('UPDATE sessions SET valid = false WHERE username = $1', [username]);
-
-            // Generar un nuevo token único para el nuevo dispositivo
-            const newToken = jwt.sign(
-                { username, device_id, exp: Math.floor(new Date(activeSession.expiration_time).getTime() / 1000) },
-                process.env.JWT_SECRET_KEY
-            );
-
-            // Eliminar el token anterior antes de insertar el nuevo.
-            await pool.query('DELETE FROM sessions WHERE token = $1', [token]);
-
-            // Insertar el nuevo token en la base de datos
-            await pool.query(
-                'INSERT INTO sessions(token, device_id, username, expiration_time, user_id, valid) VALUES($1, $2, $3, $4, $5, $6)',
-                [newToken, device_id, username, activeSession.expiration_time, activeSession.user_id, true]
-            );
-
             // Notificar al primer dispositivo que su sesión ha sido cerrada
             io.emit('logout_device', activeSession.device_id);
 
-            return res.json({ valid: true, token: newToken, username, expiration: activeSession.expiration_time });
+            // Permitir que el segundo dispositivo continúe usando el token
+            return res.json({ valid: true, username, expiration: activeSession.expiration_time });
         }
 
         // Si el token es válido y el device_id coincide, permitir el acceso
