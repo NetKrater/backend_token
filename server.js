@@ -92,7 +92,7 @@ app.post('/generate-token', async (req, res) => {
 
     const payload = {
         username: username,
-        device_id: device_id,
+        device_id: device_id, // Vincula el token al device_id del usuario
         exp: Math.floor(expirationDate.getTime() / 1000), // Fecha de expiración en segundos
     };
 
@@ -160,7 +160,6 @@ app.post('/verify-token', async (req, res) => {
 
         // Verificar si el token está siendo usado en otro dispositivo
         if (activeSession.device_id !== device_id) {
-            // No invalidar el token, pero no permitir el acceso en el segundo dispositivo
             return res.status(403).json({ valid: false, message: 'El token está siendo usado en otro dispositivo' });
         }
 
