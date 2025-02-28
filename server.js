@@ -183,11 +183,22 @@ app.post('/verify-token', async (req, res) => {
         if (new Date(activeSession.expiration_time) < new Date()) {
             // Invalidar el token en la base de datos
             await pool.query('UPDATE sessions SET valid = false WHERE token = $1', [token]);
+
+            // Notificar al cliente para forzar el cierre
+            io.to(activeSession.device_id).emit('force_close', {
+                message: 'El token ha expirado. La aplicación se cerrará automáticamente.',
+            });
+
             return res.status(401).json({ valid: false, message: 'El token ha expirado' });
         }
 
         // Verificar si el token está siendo usado en otro dispositivo
         if (activeSession.device_id !== device_id) {
+            // Notificar al primer dispositivo para forzar el cierre
+            io.to(activeSession.device_id).emit('force_close', {
+                message: 'El token está siendo usado en otro dispositivo. La aplicación se cerrará automáticamente.',
+            });
+
             return res.status(403).json({ valid: false, message: 'El token está siendo usado en otro dispositivo' });
         }
 
