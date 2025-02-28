@@ -158,8 +158,8 @@ app.post('/register-device', async (req, res) => {
 
 // ✅ **Ruta para verificar si el token es válido**
 app.post('/verify-token', async (req, res) => {
-    const token = req.headers['authorization']?.split(' ')[1];
-    const { device_id } = req.body;
+    const token = req.headers['authorization']?.split(' ')[1]; // Obtener el token del encabezado
+    const { device_id } = req.body; // Obtener el device_id del cuerpo
 
     if (!token || !device_id) {
         return res.status(400).json({ error: 'Token o device_id no proporcionado' });
