@@ -81,7 +81,7 @@ app.post('/generate-token', async (req, res) => {
     const { username, device_id, expiration } = req.body;
 
     // Validación de parámetros
-    if (!username || !device_id || !expiration) {
+    if (!username || !expiration) {
         return res.status(400).json({ message: 'Faltan parámetros' });
     }
 
@@ -92,7 +92,7 @@ app.post('/generate-token', async (req, res) => {
 
     const payload = {
         username: username,
-        device_id: device_id, // Vincula el token al device_id del usuario
+        device_id: device_id || 'admin_device', // Usar un valor por defecto si device_id está vacío
         exp: Math.floor(expirationDate.getTime() / 1000), // Fecha de expiración en segundos
     };
 
@@ -118,7 +118,7 @@ app.post('/generate-token', async (req, res) => {
         // Insertar el nuevo token en la base de datos
         await pool.query(
             'INSERT INTO sessions(token, device_id, username, expiration_time, user_id, valid) VALUES($1, $2, $3, $4, $5, $6)',
-            [token, device_id, username, expirationDate, userId, true]
+            [token, device_id || 'admin_device', username, expirationDate, userId, true]
         );
 
         res.json({ token });
