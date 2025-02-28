@@ -181,6 +181,7 @@ app.post('/verify-token', async (req, res) => {
 
         // Verificar si el token ha expirado
         if (new Date(activeSession.expiration_time) < new Date()) {
+            // Invalidar el token en la base de datos
             await pool.query('UPDATE sessions SET valid = false WHERE token = $1', [token]);
             return res.status(401).json({ valid: false, message: 'El token ha expirado' });
         }
