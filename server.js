@@ -129,6 +129,33 @@ app.post('/generate-token', async (req, res) => {
     }
 });
 
+// ✅ **Ruta para registrar el device_id del usuario**
+app.post('/register-device', async (req, res) => {
+    const token = req.headers['authorization']?.split(' ')[1];
+    const { device_id } = req.body;
+
+    if (!token || !device_id) {
+        return res.status(400).json({ error: 'Token o device_id no proporcionado' });
+    }
+
+    try {
+        // Verificar el token JWT
+        const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY);
+        const username = decoded.username;
+
+        // Actualizar el device_id en la base de datos
+        await pool.query(
+            'UPDATE sessions SET device_id = $1 WHERE token = $2',
+            [device_id, token]
+        );
+
+        res.json({ message: 'Dispositivo registrado correctamente.' });
+    } catch (err) {
+        console.error('Error registrando el dispositivo:', err);
+        res.status(500).json({ error: 'Error al registrar el dispositivo' });
+    }
+});
+
 // ✅ **Ruta para verificar si el token es válido**
 app.post('/verify-token', async (req, res) => {
     const token = req.headers['authorization']?.split(' ')[1];
