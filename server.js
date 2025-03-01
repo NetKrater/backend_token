@@ -78,7 +78,7 @@ app.get('/', (req, res) => {
 
 // ✅ **Ruta para generar un token JWT**
 app.post('/generate-token', async (req, res) => {
-    const { username, expiration } = req.body; // No se espera device_id aquí
+    const { username, expiration } = req.body;
 
     // Validación de parámetros
     if (!username || !expiration) {
@@ -97,35 +97,8 @@ app.post('/generate-token', async (req, res) => {
 
     const token = jwt.sign(payload, process.env.JWT_SECRET_KEY);
 
-    try {
-        // Invalidar todos los tokens anteriores del usuario
-        await pool.query('UPDATE sessions SET valid = false WHERE username = $1', [username]);
-
-        // Verificar si el usuario ya existe en la tabla `users`
-        const userCheck = await pool.query('SELECT id FROM users WHERE username = $1', [username]);
-        let userId;
-
-        if (userCheck.rows.length === 0) {
-            // Si el usuario no existe, crearlo y obtener su ID
-            const insertUserResult = await pool.query('INSERT INTO users (username) VALUES ($1) RETURNING id', [username]);
-            userId = insertUserResult.rows[0].id;
-        } else {
-            // Si el usuario ya existe, usar su ID
-            userId = userCheck.rows[0].id;
-        }
-
-        // Insertar el nuevo token en la base de datos (sin device_id)
-        await pool.query(
-            'INSERT INTO sessions(token, username, expiration_time, user_id, valid) VALUES($1, $2, $3, $4, $5)',
-            [token, username, expirationDate, userId, true]
-        );
-
-        res.json({ token });
-
-    } catch (err) {
-        console.error('Error generando o guardando el token:', err);
-        res.status(500).json({ error: 'Error al generar el token' });
-    }
+    // Devolver el token al cliente sin guardarlo en la base de datos
+    res.json({ token });
 });
 
 // ✅ **Ruta para registrar el device_id del usuario**
@@ -142,10 +115,23 @@ app.post('/register-device', async (req, res) => {
         const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY);
         const username = decoded.username;
 
-        // Actualizar el device_id en la base de datos
+        // Verificar si el usuario ya existe en la tabla `users`
+        const userCheck = await pool.query('SELECT id FROM users WHERE username = $1', [username]);
+        let userId;
+
+        if (userCheck.rows.length === 0) {
+            // Si el usuario no existe, crearlo y obtener su ID
+            const insertUserResult = await pool.query('INSERT INTO users (username) VALUES ($1) RETURNING id', [username]);
+            userId = insertUserResult.rows[0].id;
+        } else {
+            // Si el usuario ya existe, usar su ID
+            userId = userCheck.rows[0].id;
+        }
+
+        // Insertar el token y el device_id en la base de datos
         await pool.query(
-            'UPDATE sessions SET device_id = $1 WHERE token = $2',
-            [device_id, token]
+            'INSERT INTO sessions(token, username, expiration_time, user_id, valid, device_id) VALUES($1, $2, $3, $4, $5, $6)',
+            [token, username, new Date(decoded.exp * 1000), userId, true, device_id]
         );
 
         res.json({ message: 'Dispositivo registrado correctamente.' });
@@ -191,7 +177,6 @@ app.post('/verify-token', async (req, res) => {
 
         // Si el token es válido y el device_id coincide, permitir el acceso
         res.json({ valid: true, username, expiration: activeSession.expiration_time });
-
     } catch (err) {
         console.error('Error verificando el token:', err);
         res.status(500).json({ error: 'Error al verificar el token' });
@@ -218,7 +203,6 @@ app.post('/delete-token', async (req, res) => {
         await pool.query('DELETE FROM sessions WHERE token = $1', [tokenToDelete]);
 
         res.json({ message: `El token ha sido eliminado correctamente.` });
-
     } catch (err) {
         console.error('Error al eliminar el token:', err);
         res.status(500).json({ error: 'Error al eliminar el token' });
