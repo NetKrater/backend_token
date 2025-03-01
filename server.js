@@ -8,7 +8,6 @@ const cors = require('cors');
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
 const { Pool } = require('pg');
-const setupSocket = require('./socket'); // Importar la configuración de Socket.IO
 
 // Conexión a la base de datos sessions_db (sesiones de usuario)
 const pool = new Pool({
@@ -81,7 +80,7 @@ app.post('/generate-token', async (req, res) => {
     const { username, device_id, expiration } = req.body;
 
     // Validación de parámetros
-    if (!username || !expiration) {
+    if (!username || !device_id || !expiration) {
         return res.status(400).json({ message: 'Faltan parámetros' });
     }
 
@@ -92,7 +91,7 @@ app.post('/generate-token', async (req, res) => {
 
     const payload = {
         username: username,
-        device_id: device_id || 'admin_device', // Usar un valor por defecto si device_id está vacío
+        device_id: device_id,
         exp: Math.floor(expirationDate.getTime() / 1000), // Fecha de expiración en segundos
     };
 
@@ -118,7 +117,7 @@ app.post('/generate-token', async (req, res) => {
         // Insertar el nuevo token en la base de datos
         await pool.query(
             'INSERT INTO sessions(token, device_id, username, expiration_time, user_id, valid) VALUES($1, $2, $3, $4, $5, $6)',
-            [token, device_id || 'admin_device', username, expirationDate, userId, true]
+            [token, device_id, username, expirationDate, userId, true]
         );
 
         res.json({ token });
@@ -129,80 +128,41 @@ app.post('/generate-token', async (req, res) => {
     }
 });
 
-// ✅ **Ruta para registrar el device_id del usuario**
-app.post('/register-device', async (req, res) => {
-    const token = req.headers['authorization']?.split(' ')[1];
-    const { device_id } = req.body;
-
-    if (!token || !device_id) {
-        return res.status(400).json({ error: 'Token o device_id no proporcionado' });
-    }
-
-    try {
-        // Verificar el token JWT
-        const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY);
-        const username = decoded.username;
-
-        // Actualizar el device_id en la base de datos
-        await pool.query(
-            'UPDATE sessions SET device_id = $1 WHERE token = $2',
-            [device_id, token]
-        );
-
-        res.json({ message: 'Dispositivo registrado correctamente.' });
-    } catch (err) {
-        console.error('Error registrando el dispositivo:', err);
-        res.status(500).json({ error: 'Error al registrar el dispositivo' });
-    }
-});
-
 // ✅ **Ruta para verificar si el token es válido**
 app.post('/verify-token', async (req, res) => {
-    const token = req.headers['authorization']?.split(' ')[1]; // Obtener el token del encabezado
-    const { device_id } = req.body; // Obtener el device_id del cuerpo
+    const token = req.headers['authorization']?.split(' ')[1];
 
-    if (!token || !device_id) {
-        return res.status(400).json({ error: 'Token o device_id no proporcionado' });
+    if (!token) {
+        return res.status(400).json({ error: 'Token no proporcionado' });
     }
 
     try {
-        // Verificar el token JWT
+        // Verificar el token
         const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY);
         const username = decoded.username;
+        const deviceId = decoded.device_id;
 
-        // Buscar el token en la base de datos
-        const result = await pool.query('SELECT * FROM sessions WHERE token = $1', [token]);
+        // Invalidar todos los tokens anteriores del usuario, excepto el actual
+        await pool.query(
+            'UPDATE sessions SET valid = false WHERE username = $1 AND token != $2',
+            [username, token]
+        );
+
+        // Verificar si el token está en la base de datos y es válido
+        const result = await pool.query('SELECT * FROM sessions WHERE token = $1 AND valid = true', [token]);
 
         if (result.rows.length === 0) {
-            return res.status(404).json({ error: 'Token no encontrado en la base de datos' });
+            return res.status(404).json({ error: 'Token no encontrado o no válido' });
         }
 
         const activeSession = result.rows[0];
 
         // Verificar si el token ha expirado
         if (new Date(activeSession.expiration_time) < new Date()) {
-            // Invalidar el token en la base de datos
-            await pool.query('UPDATE sessions SET valid = false WHERE token = $1', [token]);
-
-            // Notificar al cliente para forzar el cierre
-            io.to(activeSession.device_id).emit('force_close', {
-                message: 'El token ha expirado. La aplicación se cerrará automáticamente.',
-            });
-
+            await pool.query('UPDATE sessions SET valid = false WHERE token = $1', [token]); // Invalidar el token
             return res.status(401).json({ valid: false, message: 'El token ha expirado' });
         }
 
-        // Verificar si el token está siendo usado en otro dispositivo
-        if (activeSession.device_id !== device_id) {
-            // Notificar al primer dispositivo para forzar el cierre
-            io.to(activeSession.device_id).emit('force_close', {
-                message: 'El token está siendo usado en otro dispositivo. La aplicación se cerrará automáticamente.',
-            });
-
-            return res.status(403).json({ valid: false, message: 'El token está siendo usado en otro dispositivo' });
-        }
-
-        // Si el token es válido y el device_id coincide, permitir el acceso
         res.json({ valid: true, username, expiration: activeSession.expiration_time });
 
     } catch (err) {
@@ -270,9 +230,6 @@ if (process.env.NODE_ENV === 'production') {
 } else {
     server = http.createServer(app);
 }
-
-// Configurar Socket.IO
-const io = setupSocket(server);
 
 // ✅ **Iniciar el servidor**
 const start = () => {
