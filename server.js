@@ -8,6 +8,7 @@ const cors = require('cors');
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
 const { Pool } = require('pg');
+const setupSocket = require('./socket'); // Importar la configuración de Socket.IO
 
 // Conexión a la base de datos sessions_db (sesiones de usuario)
 const pool = new Pool({
@@ -128,53 +129,68 @@ app.post('/generate-token', async (req, res) => {
     }
 });
 
-// ✅ **Ruta para verificar si el token es válido**
-app.post('/verify-token', async (req, res) => {
+// ✅ **Ruta para registrar el device_id del usuario**
+app.post('/register-device', async (req, res) => {
     const token = req.headers['authorization']?.split(' ')[1];
-    const { device_id } = req.body; // Obtener el device_id del cuerpo de la solicitud
+    const { device_id } = req.body;
 
     if (!token || !device_id) {
         return res.status(400).json({ error: 'Token o device_id no proporcionado' });
     }
 
     try {
-        // Verificar el token
+        // Verificar el token JWT
         const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY);
         const username = decoded.username;
 
-        // Verificar si el token está en la base de datos y es válido
-        const result = await pool.query(
-            'SELECT * FROM sessions WHERE token = $1 AND valid = true',
-            [token]
+        // Actualizar el device_id en la base de datos
+        await pool.query(
+            'UPDATE sessions SET device_id = $1 WHERE token = $2',
+            [device_id, token]
         );
 
+        res.json({ message: 'Dispositivo registrado correctamente.' });
+    } catch (err) {
+        console.error('Error registrando el dispositivo:', err);
+        res.status(500).json({ error: 'Error al registrar el dispositivo' });
+    }
+});
+
+// ✅ **Ruta para verificar si el token es válido**
+app.post('/verify-token', async (req, res) => {
+    const token = req.headers['authorization']?.split(' ')[1];
+    const { device_id } = req.body;
+
+    if (!token || !device_id) {
+        return res.status(400).json({ error: 'Token o device_id no proporcionado' });
+    }
+
+    try {
+        // Verificar el token JWT
+        const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY);
+        const username = decoded.username;
+
+        // Buscar el token en la base de datos
+        const result = await pool.query('SELECT * FROM sessions WHERE token = $1', [token]);
+
         if (result.rows.length === 0) {
-            return res.status(404).json({ error: 'Token no encontrado o no válido' });
+            return res.status(404).json({ error: 'Token no encontrado en la base de datos' });
         }
 
         const activeSession = result.rows[0];
 
         // Verificar si el token ha expirado
         if (new Date(activeSession.expiration_time) < new Date()) {
-            await pool.query('UPDATE sessions SET valid = false WHERE token = $1', [token]); // Invalidar el token
+            await pool.query('UPDATE sessions SET valid = false WHERE token = $1', [token]);
             return res.status(401).json({ valid: false, message: 'El token ha expirado' });
         }
 
         // Verificar si el token está siendo usado en otro dispositivo
         if (activeSession.device_id !== device_id) {
-            // Invalidar el token en el dispositivo anterior
-            await pool.query(
-                'UPDATE sessions SET valid = false WHERE token = $1',
-                [token]
-            );
-
-            // Asociar el token al nuevo dispositivo
-            await pool.query(
-                'UPDATE sessions SET device_id = $1 WHERE token = $2',
-                [device_id, token]
-            );
+            return res.status(403).json({ valid: false, message: 'El token está siendo usado en otro dispositivo' });
         }
 
+        // Si el token es válido y el device_id coincide, permitir el acceso
         res.json({ valid: true, username, expiration: activeSession.expiration_time });
 
     } catch (err) {
@@ -242,6 +258,9 @@ if (process.env.NODE_ENV === 'production') {
 } else {
     server = http.createServer(app);
 }
+
+// Configurar Socket.IO
+const io = setupSocket(server);
 
 // ✅ **Iniciar el servidor**
 const start = () => {
