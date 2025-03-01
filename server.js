@@ -77,7 +77,7 @@ app.get('/', (req, res) => {
 
 // ✅ **Ruta para generar un token JWT**
 app.post('/generate-token', async (req, res) => {
-    const { username, expiration } = req.body; // No se espera device_id aquí
+    const { username, device_id, expiration } = req.body;
 
     // Validación de parámetros
     if (!username || !expiration) {
@@ -91,6 +91,7 @@ app.post('/generate-token', async (req, res) => {
 
     const payload = {
         username: username,
+        device_id: device_id || 'admin_device', // Usar un valor por defecto si device_id está vacío
         exp: Math.floor(expirationDate.getTime() / 1000), // Fecha de expiración en segundos
     };
 
@@ -113,10 +114,10 @@ app.post('/generate-token', async (req, res) => {
             userId = userCheck.rows[0].id;
         }
 
-        // Insertar el nuevo token en la base de datos (sin device_id)
+        // Insertar el nuevo token en la base de datos
         await pool.query(
-            'INSERT INTO sessions(token, username, expiration_time, user_id, valid) VALUES($1, $2, $3, $4, $5)',
-            [token, username, expirationDate, userId, true]
+            'INSERT INTO sessions(token, device_id, username, expiration_time, user_id, valid) VALUES($1, $2, $3, $4, $5, $6)',
+            [token, device_id || 'admin_device', username, expirationDate, userId, true]
         );
 
         res.json({ token });
