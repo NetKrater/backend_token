@@ -179,6 +179,11 @@ app.post('/verify-token', async (req, res) => {
         res.json({ valid: true, username, expiration: activeSession.expiration_time });
     } catch (err) {
         console.error('Error verificando el token:', err);
+        // Si el token es inválido o ha expirado, devolver un error 401
+        if (err.name === 'TokenExpiredError' || err.name === 'JsonWebTokenError') {
+            return res.status(401).json({ valid: false, message: 'Token inválido o expirado' });
+        }
+        // Para otros errores, devolver un error 500
         res.status(500).json({ error: 'Error al verificar el token' });
     }
 });
