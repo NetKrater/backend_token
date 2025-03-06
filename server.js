@@ -78,10 +78,10 @@ app.get('/', (req, res) => {
 
 // ✅ **Ruta para generar un token JWT**
 app.post('/generate-token', async (req, res) => {
-    const { username, expiration } = req.body;
+    const { username, device_id, expiration } = req.body;
 
     // Validación de parámetros
-    if (!username || !expiration) {
+    if (!username || !device_id || !expiration) {
         return res.status(400).json({ message: 'Faltan parámetros' });
     }
 
@@ -92,28 +92,15 @@ app.post('/generate-token', async (req, res) => {
 
     const payload = {
         username: username,
+        device_id: device_id,
         exp: Math.floor(expirationDate.getTime() / 1000), // Fecha de expiración en segundos
     };
 
     const token = jwt.sign(payload, process.env.JWT_SECRET_KEY);
 
-    // Devolver el token al cliente sin guardarlo en la base de datos
-    res.json({ token });
-});
-
-// ✅ **Ruta para registrar el device_id del usuario**
-app.post('/register-device', async (req, res) => {
-    const token = req.headers['authorization']?.split(' ')[1];
-    const { device_id } = req.body;
-
-    if (!token || !device_id) {
-        return res.status(400).json({ error: 'Token o device_id no proporcionado' });
-    }
-
     try {
-        // Verificar el token JWT
-        const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY);
-        const username = decoded.username;
+        // Invalidar todos los tokens anteriores del usuario
+        await pool.query('UPDATE sessions SET valid = false WHERE username = $1', [username]);
 
         // Verificar si el usuario ya existe en la tabla `users`
         const userCheck = await pool.query('SELECT id FROM users WHERE username = $1', [username]);
@@ -128,27 +115,17 @@ app.post('/register-device', async (req, res) => {
             userId = userCheck.rows[0].id;
         }
 
-        // Verificar si el token ya existe en la tabla `sessions`
-        const sessionCheck = await pool.query('SELECT * FROM sessions WHERE token = $1', [token]);
+        // Insertar el nuevo token en la base de datos
+        await pool.query(
+            'INSERT INTO sessions(token, device_id, username, expiration_time, user_id, valid) VALUES($1, $2, $3, $4, $5, $6)',
+            [token, device_id, username, expirationDate, userId, true]
+        );
 
-        if (sessionCheck.rows.length > 0) {
-            // Si el token ya existe, actualizar el device_id y invalidar la sesión anterior
-            await pool.query(
-                'UPDATE sessions SET device_id = $1, valid = false WHERE token = $2',
-                [device_id, token]
-            );
-        } else {
-            // Si el token no existe, insertar un nuevo registro
-            await pool.query(
-                'INSERT INTO sessions(token, username, expiration_time, user_id, valid, device_id) VALUES($1, $2, $3, $4, $5, $6)',
-                [token, username, new Date(decoded.exp * 1000), userId, true, device_id]
-            );
-        }
+        res.json({ token });
 
-        res.json({ message: 'Dispositivo registrado correctamente.' });
     } catch (err) {
-        console.error('Error registrando el dispositivo:', err);
-        res.status(500).json({ error: 'Error al registrar el dispositivo' });
+        console.error('Error generando o guardando el token:', err);
+        res.status(500).json({ error: 'Error al generar el token' });
     }
 });
 
@@ -183,25 +160,35 @@ app.post('/verify-token', async (req, res) => {
 
         // Verificar si el token está siendo usado en otro dispositivo
         if (activeSession.device_id !== device_id) {
-            // Invalidar la sesión en el primer dispositivo
-            await pool.query('UPDATE sessions SET valid = false WHERE token = $1', [token]);
+            // Invalidar todos los tokens anteriores del usuario
+            await pool.query('UPDATE sessions SET valid = false WHERE username = $1', [username]);
 
-            // Actualizar el device_id en la base de datos para el nuevo dispositivo
-            await pool.query('UPDATE sessions SET device_id = $1, valid = true WHERE token = $2', [device_id, token]);
+            // Generar un nuevo token único para el nuevo dispositivo
+            const newToken = jwt.sign(
+                { username, device_id, exp: Math.floor(new Date(activeSession.expiration_time).getTime() / 1000) },
+                process.env.JWT_SECRET_KEY
+            );
 
-            // Permitir el acceso en el nuevo dispositivo
-            return res.json({ valid: true, username, expiration: activeSession.expiration_time });
+            // Eliminar el token anterior antes de insertar el nuevo.
+            await pool.query('DELETE FROM sessions WHERE token = $1', [token]);
+
+            // Insertar el nuevo token en la base de datos
+            await pool.query(
+                'INSERT INTO sessions(token, device_id, username, expiration_time, user_id, valid) VALUES($1, $2, $3, $4, $5, $6)',
+                [newToken, device_id, username, activeSession.expiration_time, activeSession.user_id, true]
+            );
+
+            // Notificar al primer dispositivo que su sesión ha sido cerrada
+            io.emit('logout_device', activeSession.device_id);
+
+            return res.json({ valid: true, token: newToken, username, expiration: activeSession.expiration_time });
         }
 
         // Si el token es válido y el device_id coincide, permitir el acceso
         res.json({ valid: true, username, expiration: activeSession.expiration_time });
+
     } catch (err) {
         console.error('Error verificando el token:', err);
-        // Si el token es inválido o ha expirado, devolver un error 401
-        if (err.name === 'TokenExpiredError' || err.name === 'JsonWebTokenError') {
-            return res.status(401).json({ valid: false, message: 'Token inválido o expirado' });
-        }
-        // Para otros errores, devolver un error 500
         res.status(500).json({ error: 'Error al verificar el token' });
     }
 });
@@ -226,6 +213,7 @@ app.post('/delete-token', async (req, res) => {
         await pool.query('DELETE FROM sessions WHERE token = $1', [tokenToDelete]);
 
         res.json({ message: `El token ha sido eliminado correctamente.` });
+
     } catch (err) {
         console.error('Error al eliminar el token:', err);
         res.status(500).json({ error: 'Error al eliminar el token' });
