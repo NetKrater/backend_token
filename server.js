@@ -128,11 +128,22 @@ app.post('/register-device', async (req, res) => {
             userId = userCheck.rows[0].id;
         }
 
-        // Insertar el token y el device_id en la base de datos
-        await pool.query(
-            'INSERT INTO sessions(token, username, expiration_time, user_id, valid, device_id) VALUES($1, $2, $3, $4, $5, $6)',
-            [token, username, new Date(decoded.exp * 1000), userId, true, device_id]
-        );
+        // Verificar si el token ya existe en la tabla `sessions`
+        const sessionCheck = await pool.query('SELECT * FROM sessions WHERE token = $1', [token]);
+
+        if (sessionCheck.rows.length > 0) {
+            // Si el token ya existe, actualizar el device_id y invalidar la sesión anterior
+            await pool.query(
+                'UPDATE sessions SET device_id = $1, valid = false WHERE token = $2',
+                [device_id, token]
+            );
+        } else {
+            // Si el token no existe, insertar un nuevo registro
+            await pool.query(
+                'INSERT INTO sessions(token, username, expiration_time, user_id, valid, device_id) VALUES($1, $2, $3, $4, $5, $6)',
+                [token, username, new Date(decoded.exp * 1000), userId, true, device_id]
+            );
+        }
 
         res.json({ message: 'Dispositivo registrado correctamente.' });
     } catch (err) {
@@ -176,7 +187,7 @@ app.post('/verify-token', async (req, res) => {
             await pool.query('UPDATE sessions SET valid = false WHERE token = $1', [token]);
 
             // Actualizar el device_id en la base de datos para el nuevo dispositivo
-            await pool.query('UPDATE sessions SET device_id = $1 WHERE token = $2', [device_id, token]);
+            await pool.query('UPDATE sessions SET device_id = $1, valid = true WHERE token = $2', [device_id, token]);
 
             // Permitir el acceso en el nuevo dispositivo
             return res.json({ valid: true, username, expiration: activeSession.expiration_time });
