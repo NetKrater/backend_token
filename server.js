@@ -134,7 +134,7 @@ app.post('/register-device', async (req, res) => {
             [token, username, new Date(decoded.exp * 1000), userId, true, device_id]
         );
 
-        res.json({ message: 'Dispositivo registrado correctamente.' });
+        res.json({ message: 'Dispositivo registrado.' });
     } catch (err) {
         console.error('Error registrando el dispositivo:', err);
         res.status(500).json({ error: 'Error al registrar el dispositivo' });
@@ -159,7 +159,7 @@ app.post('/verify-token', async (req, res) => {
         const result = await pool.query('SELECT * FROM sessions WHERE token = $1', [token]);
 
         if (result.rows.length === 0) {
-            return res.status(404).json({ error: 'Token no encontrado en la base de datos' });
+            return res.status(404).json({ valid: false, message: 'Token no encontrado en la base de datos' });
         }
 
         const activeSession = result.rows[0];
