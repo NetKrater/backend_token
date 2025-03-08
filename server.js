@@ -80,7 +80,7 @@ app.get('/', (req, res) => {
 app.post('/generate-token', async (req, res) => {
     const { username, expiration } = req.body;
 
-    // Validación de parámetros
+    // Validación de parámetros.
     if (!username || !expiration) {
         return res.status(400).json({ message: 'Faltan parámetros' });
     }
