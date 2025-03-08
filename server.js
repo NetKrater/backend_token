@@ -80,7 +80,7 @@ app.get('/', (req, res) => {
 app.post('/generate-token', async (req, res) => {
     const { username, expiration } = req.body;
 
-    // Validación de parámetros.
+    // Validación de parámetros
     if (!username || !expiration) {
         return res.status(400).json({ message: 'Faltan parámetros' });
     }
@@ -89,10 +89,6 @@ app.post('/generate-token', async (req, res) => {
     if (isNaN(expirationDate)) {
         return res.status(400).json({ message: 'Fecha de expiración no válida' });
     }
-
-    // Log para verificar la fecha de expiración recibida
-    console.log("Fecha de expiración recibida:", expiration);
-    console.log("Fecha de expiración interpretada:", expirationDate);
 
     const payload = {
         username: username,
