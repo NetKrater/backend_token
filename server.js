@@ -90,6 +90,10 @@ app.post('/generate-token', async (req, res) => {
         return res.status(400).json({ message: 'Fecha de expiración no válida' });
     }
 
+    // Log para verificar la fecha de expiración recibida
+    console.log("Fecha de expiración recibida:", expiration);
+    console.log("Fecha de expiración interpretada:", expirationDate);
+
     const payload = {
         username: username,
         exp: Math.floor(expirationDate.getTime() / 1000), // Fecha de expiración en segundos
