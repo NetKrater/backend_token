@@ -233,7 +233,7 @@ app.post('/force-logout', async (req, res) => {
     }
 });
 
-// ✅ **Ruta para actualizar la fecha de expiración de un token**
+// ✅ **Ruta para actualizar la fecha de expiración de un token (incluso si ya expiró)**
 app.post('/update-token-expiration', async (req, res) => {
     const { token, newExpiration } = req.body;
 
