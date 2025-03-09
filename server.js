@@ -233,6 +233,46 @@ app.post('/force-logout', async (req, res) => {
     }
 });
 
+// ✅ **Ruta para actualizar la fecha de expiración de un token**
+app.post('/update-token-expiration', async (req, res) => {
+    const { token, newExpiration } = req.body;
+
+    if (!token || !newExpiration) {
+        return res.status(400).json({ error: 'Token o nueva fecha de expiración no proporcionados' });
+    }
+
+    try {
+        // Verificar si el token existe en la base de datos
+        const result = await pool.query('SELECT * FROM sessions WHERE token = $1', [token]);
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Token no encontrado en la base de datos' });
+        }
+
+        const expirationDate = new Date(newExpiration);
+        if (isNaN(expirationDate.getTime())) {
+            return res.status(400).json({ error: 'Fecha de expiración no válida' });
+        }
+
+        // Actualizar la fecha de expiración en la base de datos
+        await pool.query('UPDATE sessions SET expiration_time = $1 WHERE token = $2', [expirationDate, token]);
+
+        // Generar un nuevo token con la nueva fecha de expiración
+        const payload = {
+            username: result.rows[0].username,
+            exp: Math.floor(expirationDate.getTime() / 1000), // Fecha de expiración en segundos
+        };
+
+        const newToken = jwt.sign(payload, process.env.JWT_SECRET_KEY);
+
+        // Devolver el nuevo token al cliente
+        res.json({ token: newToken });
+    } catch (err) {
+        console.error('Error actualizando la fecha de expiración del token:', err);
+        res.status(500).json({ error: 'Error al actualizar la fecha de expiración del token' });
+    }
+});
+
 // ✅ **Crear el servidor HTTP o HTTPS**
 let server;
 if (process.env.NODE_ENV === 'production') {
