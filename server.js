@@ -260,29 +260,14 @@ app.post('/update-token-expiration', async (req, res) => {
             return res.status(400).json({ error: 'La nueva fecha de expiración debe ser en el futuro' });
         }
 
-        // Generar un nuevo token con la nueva fecha de expiración
-        const payload = {
-            username: result.rows[0].username,
-            exp: Math.floor(expirationDate.getTime() / 1000), // Fecha de expiración en segundos
-        };
-
-        const newToken = jwt.sign(payload, process.env.JWT_SECRET_KEY);
-
-        // Actualizar la base de datos con el nuevo token y la nueva fecha de expiración
-        const updateResult = await pool.query(
-            'UPDATE sessions SET token = $1, expiration_time = $2 WHERE token = $3 RETURNING *',
-            [newToken, expirationDate, token]
+        // Actualizar la fecha de expiración en la base de datos
+        await pool.query(
+            'UPDATE sessions SET expiration_time = $1 WHERE token = $2',
+            [expirationDate, token]
         );
 
-        // Depuración: Mostrar el resultado de la actualización
-        console.log('Resultado de la actualización:', updateResult.rows);
-
-        if (updateResult.rows.length === 0) {
-            return res.status(500).json({ error: 'No se pudo actualizar la fecha de expiración' });
-        }
-
-        // Devolver el nuevo token al cliente
-        res.json({ token: newToken });
+        // Devolver el mismo token con la nueva fecha de expiración
+        res.json({ token });
     } catch (err) {
         console.error('Error actualizando la fecha de expiración del token:', err);
         res.status(500).json({ error: 'Error al actualizar la fecha de expiración del token' });
