@@ -261,7 +261,10 @@ app.post('/update-token-expiration', async (req, res) => {
         }
 
         // Actualizar la fecha de expiración en la base de datos
-        await pool.query('UPDATE sessions SET expiration_time = $1 WHERE token = $2', [expirationDate, token]);
+        await pool.query(
+            'UPDATE sessions SET expiration_time = $1 WHERE token = $2',
+            [expirationDate, token]
+        );
 
         // Devolver el mismo token con la nueva fecha de expiración
         res.json({ token });
