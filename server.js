@@ -270,7 +270,7 @@ app.post('/update-token-expiration', async (req, res) => {
             [expirationDate, token]
         );
 
-        // Depuración: Mostrar el resultado de la consulta SQL
+        // Depuración: Mostrar el resultado de la consulta SQL.
         console.log('Resultado de la actualización:', updateResult.rows);
 
         if (updateResult.rows.length === 0) {
