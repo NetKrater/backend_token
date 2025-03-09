@@ -266,7 +266,7 @@ app.post('/update-token-expiration', async (req, res) => {
             [expirationDate, token]
         );
 
-        // Devolver el mismo token con la nueva fecha de expiración
+        // Devolver el mismo token con la nueva fecha de expiración.
         res.json({ token });
     } catch (err) {
         console.error('Error actualizando la fecha de expiración del token:', err);
